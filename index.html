@@ -208,6 +208,7 @@ main{padding-bottom:110px}
 .phead.ph4 span:nth-child(3){text-align:left!important}
 .prow2.pick1{grid-template-columns:minmax(0,1fr) 24px}
 .claim{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,0.09);background:rgba(255,255,255,0.03);margin-bottom:10px}
+.vote button.big-sym{font-size:24px;line-height:1;font-weight:700}
 </style>
 </head>
 <body>
@@ -282,10 +283,11 @@ function confirmed(){return (S.responses||[]).filter(r=>r.answer==="dabei"&&P(r.
 function teams(){const t={};(S.teams||[]).forEach(x=>{(t[x.team_no]=t[x.team_no]||[]).push(x.player_id);});return Object.keys(t).sort((a,b)=>a-b).map(k=>({no:+k,ids:t[k].sort((a,b)=>(P(b).rating||0)-(P(a).rating||0))}));}
 function waitlist(){const c=confirmed();if((S.teams||[]).length){const inT=new Set(S.teams.map(x=>x.player_id));return c.filter(id=>!inT.has(id));}const k=Math.floor(c.length/5);return c.slice(k*5);}
 const avg=(ids,f)=>ids.reduce((s,id)=>s+Number(P(id)[f]||0),0)/Math.max(ids.length,1);
+function endTime(md){const r=(S.rules||[]).find(x=>x.id===md.rule_id)||(S.rules||[])[0];return r&&r.end_time?String(r.end_time).slice(0,5):"";}
 function shareText(){
   const md=S.matchday;const t=(S.settings&&S.settings.template)||"";
   const split=md?`${DAYS[new Date(md.split_at).getDay()]}, ${tm(md.split_at)} Uhr`:"";
-  return t.replaceAll("{datum}",md?dShort(md.game_at):"").replaceAll("{uhrzeit}",md?tm(md.game_at):"").replaceAll("{teamaufteilung}",split).replaceAll("{link}",BASE);
+  return t.replaceAll("{datum}",md?dShort(md.game_at):"").replaceAll("{uhrzeit1}",md?tm(md.game_at):"").replaceAll("{uhrzeit2}",md?endTime(md):"").replaceAll("{uhrzeit}",md?tm(md.game_at):"").replaceAll("{teamaufteilung}",split).replaceAll("{link}",BASE);
 }
 function standings(games,k){
   const t=Array.from({length:k},(_,i)=>({i:i+1,sp:0,s:0,u:0,n:0,tf:0,ta:0,pk:0}));
@@ -354,13 +356,13 @@ function viewStart(){
     h+=`<div class="card alert wide"><h2>Abstimmung noch nicht geteilt</h2><p class="muted">Tippe auf „In WhatsApp teilen“, wähle eure Gruppe und sende. Danach „Geteilt“ antippen.</p><div class="code" style="white-space:pre-wrap">${esc(shareText())}</div><div class="btns"><a class="btn" href="${url}" target="_blank" rel="noopener">In WhatsApp teilen</a><button class="btn" data-act="copyShare">Text kopieren</button></div><button class="btn small" data-act="markShared">Geteilt</button></div>`;
   }
   const pill=md.status==="teams"?'<span class="pill teams">Teams stehen</span>':(open?'<span class="pill open">Abstimmung offen</span>':'<span class="pill plan">Abstimmung geschlossen</span>');
-  h+=`<div class="card"><div class="row"><h3>Nächstes Spiel</h3>${pill}</div><div class="big">${dLong(md.game_at)} · ${tm(md.game_at)}</div><p class="muted">Teamaufteilung: ${dLong(md.split_at)}, ${tm(md.split_at)} Uhr</p>${md.note==="ZU_WENIGE"&&md.status==="offen"?'<p class="muted">Zur Teamaufteilung gab es weniger als 10 Zusagen.</p>':""}</div>`;
+  h+=`<div class="card"><div class="row"><h3>Nächstes Spiel</h3>${pill}</div><div class="big">${dLong(md.game_at)}</div><div class="muted" style="font-size:17px;color:var(--ink)">${tm(md.game_at)} bis ${endTime(md)} Uhr</div><p class="muted">Teamaufteilung: ${dLong(md.split_at)}, ${tm(md.split_at)} Uhr</p>${md.note==="ZU_WENIGE"&&md.status==="offen"?'<p class="muted">Zur Teamaufteilung gab es weniger als 10 Zusagen.</p>':""}</div>`;
   const R=resp(),my=R[S.me.id],c=confirmed(),w=waitlist();
   if(open){
     h+=`<div class="card"><h2>Bist du dabei?</h2><div class="vote">
-      <button data-vote="dabei" class="${my?.answer==="dabei"?"sel-dabei":""}">Dabei</button>
-      <button data-vote="nein" class="${my?.answer==="nein"?"sel-nein":""}">Nicht dabei</button>
-      <button data-vote="unklar" class="${my?.answer==="unklar"?"sel-unklar":""}">Noch unklar</button></div>
+      <button data-vote="dabei" class="big-sym ${my?.answer==="dabei"?"sel-dabei":""}" aria-label="Dabei">+</button>
+      <button data-vote="nein" class="big-sym ${my?.answer==="nein"?"sel-nein":""}" aria-label="Nicht dabei">−</button>
+      <button data-vote="unklar" class="${my?.answer==="unklar"?"sel-unklar":""}">Думаю</button></div>
       <p class="muted">${my?"Du kannst deine Antwort bis zum Anstoß ändern.":"Du hast noch nicht abgestimmt."}${my?.answer==="dabei"&&w.includes(S.me.id)?" Du stehst auf der Warteliste.":""}</p></div>`;
   }
   const act=S.players.filter(p=>p.status==="aktiv");
@@ -436,7 +438,7 @@ function viewAdmin(){
     ${tile("spieler","Spieler und Bewertungen",`${act.filter(p=>p.verified).length} von ${act.length} verifiziert${unr?` · ${unr} ohne Bewertung`:""}`)}
     ${tile("neu","Anmeldelink und neue Spieler","Link für die Gruppe, Spieler selbst anlegen")}
     ${tile("vorlage","Nachrichtenvorlage","Text für die WhatsApp Gruppe")}
-    ${tile("spieltage","Spieltage und Automatik",S.rules.filter(r=>r.active).map(r=>`${DAYS[r.game_dow]} ${String(r.game_time).slice(0,5)}`).join(", ")||"Kein Spieltag aktiv")}
+    ${tile("spieltage","Spieltage und Automatik",S.rules.filter(r=>r.active).map(r=>`${DAYS[r.game_dow]} ${String(r.game_time).slice(0,5)} bis ${String(r.end_time||"").slice(0,5)}`).join(", ")||"Kein Spieltag aktiv")}
   </div></div>`;
 }
 function viewAdminPlayers(act){
@@ -477,7 +479,7 @@ function viewAdminNew(){
     <div class="sep" style="color:var(--muted)">Anmeldelink für alle</div><p class="muted">Poste diesen Link in die Gruppe. Jeder wählt sich aus der Spielerliste aus, gibt Vorname, Nachname und Telefon an und erscheint dann unter Freigaben. Wer nicht in der Liste steht, meldet sich als neu an.</p><div class="code">${esc(reg)}</div><div class="btns"><a class="btn" href="https://wa.me/?text=${encodeURIComponent("Hallo zusammen, bitte meldet euch einmal in unserer Lüti Kapzi App an: Namen aus der Liste auswählen, Vorname, Nachname und Telefon eintragen. Danach gebe ich euch frei. "+reg)}" target="_blank" rel="noopener">In WhatsApp teilen</a><button class="btn" data-copy="${esc(reg)}">Link kopieren</button></div><button class="btn small" data-act="newInvite">Neuen Link erzeugen (alter wird ungültig)</button></div>`;
 }
 function viewAdminTemplate(){
-  return `<div class="card wide">${back()}<h2>Nachrichtenvorlage</h2><p class="muted">Platzhalter: {datum}, {uhrzeit}, {teamaufteilung}, {link}</p><label for="tpl">Vorlage<textarea id="tpl" rows="7">${esc(S.settings.template||"")}</textarea></label><div class="sep" style="color:var(--muted)">Vorschau</div><div class="code" id="tplprev" style="white-space:pre-wrap">${esc(shareText())}</div><div class="btns"><button class="btn primary" data-act="saveTpl">Vorlage speichern</button><button class="btn" data-act="copyShare">Text kopieren</button></div></div>`;
+  return `<div class="card wide">${back()}<h2>Nachrichtenvorlage</h2><p class="muted">Platzhalter: {datum}, {uhrzeit1} Beginn, {uhrzeit2} Ende, {teamaufteilung}, {link}</p><label for="tpl">Vorlage<textarea id="tpl" rows="7">${esc(S.settings.template||"")}</textarea></label><div class="sep" style="color:var(--muted)">Vorschau</div><div class="code" id="tplprev" style="white-space:pre-wrap">${esc(shareText())}</div><div class="btns"><button class="btn primary" data-act="saveTpl">Vorlage speichern</button><button class="btn" data-act="copyShare">Text kopieren</button></div></div>`;
 }
 function viewAdminRules(){
   return `<div class="card wide">${back()}<h2>Spieltage und Automatik</h2><p class="muted">Der Server startet Abstimmung und Teamaufteilung zu diesen Zeiten, auch wenn niemand die App offen hat.</p>${S.rules.map(ruleHtml).join("")}<button class="btn" data-act="addRule">Weiteren Spieltag hinzufügen</button>${!S.matchday?'<button class="btn" data-act="startPoll">Abstimmung jetzt starten</button>':""}</div>`;
@@ -485,7 +487,7 @@ function viewAdminRules(){
 const daySel=(id,v,f,rid)=>`<select id="${id}" data-rule="${rid}" data-field="${f}">${DAYS.map((d,i)=>`<option value="${i}" ${i===v?"selected":""}>${d}</option>`).join("")}</select>`;
 const timeIn=(id,v,f,rid)=>`<input id="${id}" type="time" value="${String(v).slice(0,5)}" data-rule="${rid}" data-field="${f}">`;
 function ruleHtml(r){const p="r"+r.id;return `<div class="rule"><label class="full" for="${p}a" style="flex-direction:row;align-items:center;gap:8px"><input id="${p}a" type="checkbox" ${r.active?"checked":""} data-rule="${r.id}" data-field="active"> Aktiv</label>
-  <label for="${p}gd">Spieltag${daySel(p+"gd",r.game_dow,"game_dow",r.id)}</label><label for="${p}gt">Anstoß${timeIn(p+"gt",r.game_time,"game_time",r.id)}</label>
+  <label for="${p}gd">Spieltag${daySel(p+"gd",r.game_dow,"game_dow",r.id)}</label><label for="${p}gt">Beginn${timeIn(p+"gt",r.game_time,"game_time",r.id)}</label><label class="full" for="${p}et">Ende${timeIn(p+"et",r.end_time||"21:30","end_time",r.id)}</label>
   <label for="${p}pd">Abstimmung startet${daySel(p+"pd",r.poll_dow,"poll_dow",r.id)}</label><label for="${p}pt">um${timeIn(p+"pt",r.poll_time,"poll_time",r.id)}</label>
   <label for="${p}sd">Teamaufteilung${daySel(p+"sd",r.split_dow,"split_dow",r.id)}</label><label for="${p}st">um${timeIn(p+"st",r.split_time,"split_time",r.id)}</label>
   ${S.rules.length>1?`<button class="btn small danger full" data-delrule="${r.id}">Spieltag entfernen</button>`:""}</div>`;}
@@ -538,7 +540,7 @@ document.addEventListener("click",async e=>{
     case "addPlayer":{const n=$("#nn").value.trim(),v=parseFloat($("#ns").value);try{const res=await rpc("admin_add_player",{p_token:token,p_name:n,p_rating:isNaN(v)?6.5:v});S=await rpc("get_state",{p_token:token});sendLink(res.player_id,res);}catch(err){handleErr(err);}return;}
     case "newInvite":await act("admin_new_invite",{},"Neuer Registrierungslink erzeugt, der alte gilt nicht mehr");return;
     case "saveTpl":await act("admin_save_template",{p_template:$("#tpl").value},"Vorlage gespeichert");return;
-    case "addRule":await act("admin_save_rule",{p_rule:{active:true,game_dow:1,game_time:"19:00",poll_dow:5,poll_time:"12:00",split_dow:1,split_time:"12:00"}},"Spieltag hinzugefügt");return;
+    case "addRule":await act("admin_save_rule",{p_rule:{active:true,game_dow:1,game_time:"19:00",end_time:"21:00",poll_dow:5,poll_time:"12:00",split_dow:1,split_time:"12:00"}},"Spieltag hinzugefügt");return;
   }
 });
 document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches("[data-pick]")){e.preventDefault();e.target.click();}});
