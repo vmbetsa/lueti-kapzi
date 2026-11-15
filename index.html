@@ -244,6 +244,10 @@ a.btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.14);color
 .loginhint{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .loginhint span{font-weight:600}
 nav:has(.in:empty){display:none}
+nav button{position:relative}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-left:6px;border-radius:999px;background:var(--bad);color:#fff;font:700 11px var(--font-body);vertical-align:2px;box-shadow:0 0 0 2px var(--bg)}
+.badge.inl{min-width:10px;width:10px;height:10px;padding:0;vertical-align:1px}
+@media (max-width:959px){nav button .badge{position:absolute;top:-6px;right:2px;margin:0}}
 </style>
 </head>
 <body>
@@ -283,7 +287,9 @@ const ERR={NICHT_ANGEMELDET:"Bitte über deinen persönlichen Zugangslink anmeld
 
 let token=null; try{token=localStorage.getItem("lk_token");}catch(e){}
 let S=null, tab="start", live=null, selected=null, linkBox=null, regCode=null, confirmClose=false, loading=false;
-let adminSec=null, openPlayer=null, pSearch="", pSort={k:"last",dir:1}, partSort="order", confirmDeact=null;
+let adminSec=null, openPlayer=null, pSearch="", pSort={k:"last",dir:1}, partSort="order", confirmDeact=null, listScroll=0;
+try{const v=JSON.parse(localStorage.getItem("lk_sort")||"null");if(v&&v.pSort)pSort=v.pSort;if(v&&v.partSort)partSort=v.partSort;}catch(e){}
+function saveSort(){try{localStorage.setItem("lk_sort",JSON.stringify({pSort,partSort}));}catch(e){}}
 let claimList=null, claimPick=undefined, claimSearch="", showPw=false, mgrSearch="";
 
 // ---------- Hilfen ----------
@@ -419,7 +425,8 @@ function render(){
   if(isAdmin())tabs.push(["admin",L("Admin")]);
   else if(canApprove())tabs.push(["admin",L("Freigaben")]);
   if(!tabs.find(t=>t[0]===tab))tab="start";
-  $("#nav").innerHTML=tabs.map(([k,l])=>`<button class="${k===tab?"act":""}" data-tab="${k}">${l}</button>`).join("");
+  const pendN=(S.claims||[]).length;
+  $("#nav").innerHTML=tabs.map(([k,l])=>`<button class="${k===tab?"act":""}" data-tab="${k}">${l}${k==="admin"&&pendN?`<span class="badge" aria-label="${pendN}">${pendN}</span>`:""}</button>`).join("");
   $("#main").innerHTML={start:viewStart,teams:viewTeams,abend:viewAbend,historie:viewHistory,admin:viewAdmin}[tab]();
 }
 
@@ -550,9 +557,9 @@ function viewAdmin(){
   if(adminSec==="vorlage")return viewAdminTemplate();
   if(adminSec==="spieltage")return viewAdminRules();
   if(openPlayer)return viewAdminPlayer(S.players.find(x=>x.id===openPlayer)||{});
-  const tile=(k,t,sub,hot)=>`<button class="tile ${hot?"hot":""}" data-asec="${k}"><b>${t}</b><span>${sub}</span><i aria-hidden="true">›</i></button>`;
+  const tile=(k,t,sub,hot)=>`<button class="tile ${hot?"hot":""}" data-asec="${k}"><b>${t}${hot?' <span class="badge inl"></span>':""}</b><span>${sub}</span><i aria-hidden="true">›</i></button>`;
   return `${linkBox||""}<div class="card wide"><h2>${L("Admin")}</h2><div class="tiles">
-    ${pend.length?tile("freigaben",L("Freigaben"),L("{n} warten auf Freigabe",{n:pend.length}),true):""}
+    ${tile("freigaben",L("Freigaben"),pend.length?L("{n} warten auf Freigabe",{n:pend.length}):L("Niemand wartet auf Freigabe."),pend.length>0)}
     ${tile("spieler",L("Spieler und Bewertungen"),L("{v} von {n} verifiziert",{v:act.filter(p=>p.verified).length,n:act.length})+` · ${L("{n} mit Abo",{n:act.filter(p=>p.abo).length})}`+(unr?` · ${L("{n} ohne Bewertung",{n:unr})}`:""))}
     ${tile("neu",L("Anmeldelink und neue Spieler"),L("Link für die Gruppe, Spieler selbst anlegen"))}
     ${tile("vorlage",L("Nachrichtenvorlage"),L("Text für die WhatsApp Gruppe"))}
@@ -653,11 +660,11 @@ document.addEventListener("click",async e=>{
   if(d.lang){setLang(d.lang);return;}
   if(d.tab){tab=d.tab;selected=null;confirmClose=false;if(d.tab==="admin"){adminSec=null;openPlayer=null;}linkBox=null;render();window.scrollTo(0,0);return;}
   if(d.asec!==undefined){adminSec=d.asec||null;openPlayer=null;linkBox=null;render();window.scrollTo(0,0);return;}
-  if(d.player){if(!isAdmin())return;tab="admin";adminSec=S.players.find(p=>p.id===+d.player&&isGuest(p))?null:"spieler";openPlayer=+d.player;linkBox=null;confirmDeact=null;render();window.scrollTo(0,0);return;}
-  if(d.closeplayer){openPlayer=null;linkBox=null;render();return;}
-  if(d.sort){if(pSort.k===d.sort)pSort.dir*=-1;else pSort={k:d.sort,dir:d.sort==="rank"?-1:1};render();return;}
+  if(d.player){if(!isAdmin())return;if(adminSec==="spieler"&&!openPlayer)listScroll=window.scrollY;tab="admin";adminSec=S.players.find(p=>p.id===+d.player&&isGuest(p))?null:"spieler";openPlayer=+d.player;linkBox=null;confirmDeact=null;render();window.scrollTo(0,0);return;}
+  if(d.closeplayer){openPlayer=null;linkBox=null;render();if(adminSec==="spieler")window.scrollTo(0,listScroll);return;}
+  if(d.sort){if(pSort.k===d.sort)pSort.dir*=-1;else pSort={k:d.sort,dir:d.sort==="rank"?-1:1};saveSort();render();return;}
   if(d.tpll){tplLang=d.tpll;render();return;}
-  if(d.psort){partSort=d.psort;render();return;}
+  if(d.psort){partSort=d.psort;saveSort();render();return;}
   if(d.reactivate){await act("admin_update_player",{p_player:+d.reactivate,p_data:{status:"aktiv"}},"Wieder aktiv");return;}
   if(d.deactivate){const id=+d.deactivate;if(confirmDeact!==id){confirmDeact=id;render();return;}confirmDeact=null;openPlayer=null;await act("admin_update_player",{p_player:id,p_data:{status:"inaktiv"}},"Spieler deaktiviert");return;}
   if(d.vote){const st=await act("set_answer",{p_answer:d.vote});if(st)toast(d.vote==="dabei"?"+":d.vote==="nein"?"−":"Думаю");return;}
@@ -729,7 +736,7 @@ document.addEventListener("change",async e=>{
   const q=new URLSearchParams(location.search);
   const z=q.get("z"),rc=q.get("r");
   if(z){try{const res=await rpc("redeem_link",{p_link:z});setToken(res.token);toast(L("Angemeldet"));}catch(err){if(!token){$("#main").innerHTML=`<div class="card wide"><h2>${L("Link ungültig")}</h2><p class="muted">${L(ERR.LINK_UNGUELTIG)}</p></div>`;history.replaceState(null,"",BASE);return;}}history.replaceState(null,"",BASE);}
-  setInterval(()=>{const busy=document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);if(token&&document.visibilityState==="visible"&&!live&&!busy&&tab!=="admin")load(true);},20000);
+  setInterval(()=>{const busy=document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);if(token&&document.visibilityState==="visible"&&!live&&!busy&&!(tab==="admin"&&openPlayer))load(true);},20000);
   document.addEventListener("visibilitychange",()=>{if(token&&document.visibilityState==="visible"&&!live)load(true);});
   if(rc&&!token){regCode=rc;renderRegister();return;}
   if(!token){renderNoLogin();return;}
