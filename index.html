@@ -175,6 +175,31 @@ main{padding-bottom:110px}
   .brand{flex-direction:column;align-items:flex-start;gap:12px}
 }
 .row > .pill{flex:none;width:auto;display:inline-block}
+
+/* Admin Struktur */
+.tiles{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.tile{position:relative;text-align:left;display:flex;flex-direction:column;gap:4px;padding:16px 40px 16px 16px;border-radius:16px;border:1px solid rgba(255,255,255,0.09);background:rgba(255,255,255,0.04);color:var(--ink);font:inherit;cursor:pointer;min-height:76px}
+.tile b{font-family:var(--font-display);font-weight:600;font-size:16px}
+.tile span{font-size:13px;color:var(--muted)}
+.tile i{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-style:normal;font-size:22px;color:var(--muted)}
+.tile.hot{border-color:rgba(255,213,74,0.5);background:rgba(255,213,74,0.08)}
+.tile:hover{border-color:rgba(255,255,255,0.2)}
+.plist{display:flex;flex-direction:column}
+.phead,.prow2{display:grid;grid-template-columns:minmax(0,1fr) 44px 44px 44px 52px;gap:6px;align-items:center}
+.phead{font-size:11.5px;color:var(--muted);padding:6px 4px;border-bottom:1px solid var(--line)}
+.phead span:not(:first-child),.prow2 span:not(:first-child){text-align:right}
+.prow2{width:100%;background:transparent;border:0;border-bottom:1px solid rgba(255,255,255,0.06);color:var(--ink);font:inherit;font-size:14.5px;padding:11px 4px;cursor:pointer;text-align:left}
+.prow2:hover{background:rgba(255,255,255,0.03)}
+.prow2 .pn{white-space:normal;line-height:1.35}
+.prow2 .chip{font-size:10.5px;padding:1px 6px;margin-left:2px}
+.prow2 span:not(.pn){color:var(--muted);font-size:13.5px}
+.prow2 .rk{color:var(--accent)!important;font-weight:700;font-family:var(--font-display)}
+.chip.nophone{color:var(--warn)}
+.rankbox{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 14px;border-radius:14px;background:rgba(255,213,74,0.08);border:1px solid rgba(255,213,74,0.25)}
+.rankbox div{display:flex;flex-direction:column}
+.rankbox b{font-family:var(--font-display);font-size:30px;color:var(--accent);line-height:1}
+.rgrid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.rgrid3 input{width:100%}
 </style>
 </head>
 <body>
@@ -197,7 +222,7 @@ const TEAMS=[["Rot","var(--t-rot)"],["Grün","var(--t-gruen)"],["Blau","var(--t-
 const ERR={NICHT_ANGEMELDET:"Bitte über deinen persönlichen Zugangslink anmelden.",KEIN_ADMIN:"Nur für Admins.",ZU_WENIGE:"Weniger als 10 Zusagen: keine zwei Teams möglich.",
   ABSTIMMUNG_GESCHLOSSEN:"Die Abstimmung ist geschlossen, das Spiel hat begonnen.",KEINE_ABSTIMMUNG:"Gerade läuft keine Abstimmung.",LINK_UNGUELTIG:"Dieser Link ist ungültig oder abgelaufen. Bitte den Admin um einen neuen Link.",
   SPIELE_VORHANDEN:"Es sind schon Spiele eingetragen, die Teams lassen sich nicht mehr ändern.",GLEICHES_TEAM:"Die beiden Spieler sind im selben Team.",KEINE_TEAMS:"Es stehen noch keine Teams.",
-  NAME_UNGUELTIG:"Bitte einen Namen mit 2 bis 40 Zeichen eingeben.",WARTET_AUF_FREIGABE:"Deine Registrierung wartet noch auf Freigabe.",ABSTIMMUNG_LAEUFT:"Es läuft bereits eine Abstimmung.",KEIN_SPIELTAG:"Bitte zuerst einen Spieltag anlegen."};
+  NAME_UNGUELTIG:"Bitte einen Namen mit 2 bis 40 Zeichen eingeben.",WARTET_AUF_FREIGABE:"Deine Registrierung wartet noch auf Freigabe.",ABSTIMMUNG_LAEUFT:"Es läuft bereits eine Abstimmung.",KEIN_SPIELTAG:"Bitte zuerst einen Spieltag anlegen.",WERT_UNGUELTIG:"Werte müssen zwischen 1 und 10 liegen."};
 
 let token=null; try{token=localStorage.getItem("lk_token");}catch(e){}
 let S=null, tab="start", live=null, selected=null, linkBox=null, regCode=null, confirmClose=false, loading=false;
@@ -334,8 +359,8 @@ function viewTeams(){
   const adm=isAdmin(),T=teams(),locked=(S.games||[]).length>0;
   const sums=T.map(t=>avg(t.ids,"rating"));
   let h=`<div class="card wide"><div class="row"><h2>Teams ${dShort(md.game_at)}</h2><span class="pill teams">${T.length} Teams</span></div>`;
-  if(adm&&!locked)h+=`<p class="muted">Abstand stärkstes zu schwächstem Team: <b>${fmt(Math.max(...sums)-Math.min(...sums))}</b> im Schnitt. Zum Tauschen zwei Spieler nacheinander antippen, auch von der Warteliste.</p>`;
-  h+=`<div class="teams">${T.map(t=>`<div class="team"><div class="row"><b>${ttag(t.no)}</b>${adm?`<span class="muted">Gesamt Ø ${fmt(avg(t.ids,"rating"))}</span>`:""}</div>${adm?`<div class="cats">Tor Ø ${fmt(avg(t.ids,"tor"))} · Verteidigung Ø ${fmt(avg(t.ids,"def"))} · Angriff Ø ${fmt(avg(t.ids,"att"))}</div>`:""}${t.ids.map(id=>{const s=selected===id;const can=adm&&!locked;return `<div class="pchip ${can?"tap":""} ${s?"sel":""}" ${can?`data-pick="${id}" role="button" tabindex="0"`:""}><span>${esc(P(id).name)}${P(id).gk_only?' <span class="chip">Torwart</span>':""}</span>${adm?`<span class="muted">${fmt(P(id).rating)}</span>`:""}</div>`;}).join("")}</div>`).join("")}</div>`;
+  if(adm&&!locked)h+=`<p class="muted">Rank Abstand stärkstes zu schwächstem Team: <b>${fmt(Math.max(...sums)-Math.min(...sums))}</b> im Schnitt. Zum Tauschen zwei Spieler nacheinander antippen, auch von der Warteliste.</p>`;
+  h+=`<div class="teams">${T.map(t=>`<div class="team"><div class="row"><b>${ttag(t.no)}</b>${adm?`<span class="muted">Rank Ø ${fmt(avg(t.ids,"rating"))}</span>`:""}</div>${adm?`<div class="cats">Tor Ø ${fmt(avg(t.ids,"tor"))} · Verteidigung Ø ${fmt(avg(t.ids,"def"))} · Angriff Ø ${fmt(avg(t.ids,"att"))}</div>`:""}${t.ids.map(id=>{const s=selected===id;const can=adm&&!locked;return `<div class="pchip ${can?"tap":""} ${s?"sel":""}" ${can?`data-pick="${id}" role="button" tabindex="0"`:""}><span>${esc(P(id).name)}${P(id).gk_only?' <span class="chip">Torwart</span>':""}</span>${adm?`<span class="muted">${fmt(P(id).rating)}</span>`:""}</div>`;}).join("")}</div>`).join("")}</div>`;
   const w=waitlist();
   if(w.length)h+=`<div class="sep">Warteliste</div>${w.map(id=>{const s=selected===id;const can=adm&&!locked;return `<div class="pchip ${can?"tap":""} ${s?"sel":""}" ${can?`data-pick="${id}" role="button" tabindex="0"`:""}><span>${esc(P(id).name)}</span>${adm?`<span class="muted">${fmt(P(id).rating)}</span>`:""}</div>`;}).join("")}`;
   if(adm&&!locked)h+=`<button class="btn" data-act="gen">Neu verteilen</button>`;
@@ -367,23 +392,61 @@ function viewHistory(){
     return `<div class="card"><div class="row"><h2>${dShort(m.game_at)}</h2><span class="muted">${games.length} ${games.length===1?"Spiel":"Spiele"}</span></div>${standingsHtml(m.games,k)}<details><summary class="muted" style="cursor:pointer">Spiele und Teams anzeigen</summary><div class="gamelist">${gamesHtml(games,false)}</div><div class="teams" style="margin-top:8px">${Object.keys(T).map(n=>`<div class="team"><b>${ttag(+n)}</b><span class="muted">${T[n].map(esc).join(", ")}</span></div>`).join("")}</div></details></div>`;}).join("");
 }
 
+let adminSec=null, openPlayer=null, pSearch="";
+const back=()=>`<button class="btn small" data-asec="">‹ Zurück zu Admin</button>`;
 function viewAdmin(){
-  let h="";
   const pend=S.players.filter(p=>p.status==="wartet");
-  if(pend.length)h+=`<div class="card alert"><h2>Wartet auf Freigabe</h2>${pend.map(p=>`<div class="row"><span>${esc(p.name)}</span><span class="btns" style="flex:0 0 auto"><input id="st${p.id}" aria-label="Startwert für ${esc(p.name)}" type="number" step="0.1" value="${fmt(p.rating).replace(",",".")}" style="width:72px"><button class="btn small primary" data-approve="${p.id}">Freigeben</button><button class="btn small danger" data-reject="${p.id}">Ablehnen</button></span></div>`).join("")}</div>`;
-  if(linkBox)h+=linkBox;
+  const act=S.players.filter(p=>p.status==="aktiv");
+  const unr=act.filter(p=>p.unrated).length;
+  if(adminSec==="spieler")return viewAdminPlayers(act);
+  if(adminSec==="freigaben")return viewAdminPending(pend);
+  if(adminSec==="neu")return viewAdminNew();
+  if(adminSec==="vorlage")return viewAdminTemplate();
+  if(adminSec==="spieltage")return viewAdminRules();
+  const md=S.matchday;
+  const tile=(k,t,sub,hot)=>`<button class="tile ${hot?"hot":""}" data-asec="${k}"><b>${t}</b><span>${sub}</span><i aria-hidden="true">›</i></button>`;
+  return `${linkBox||""}<div class="card wide"><h2>Admin</h2><div class="tiles">
+    ${pend.length?tile("freigaben","Freigaben",`${pend.length} ${pend.length===1?"Spieler wartet":"Spieler warten"} auf Freigabe`,true):""}
+    ${tile("spieler","Spieler und Bewertungen",`${act.length} aktiv${unr?` · ${unr} noch nicht bewertet`:""}`)}
+    ${tile("neu","Spieler hinzufügen","Neuen Spieler anlegen oder Registrierungslink teilen")}
+    ${tile("vorlage","Nachrichtenvorlage","Text für die WhatsApp Gruppe")}
+    ${tile("spieltage","Spieltage und Automatik",S.rules.filter(r=>r.active).map(r=>`${DAYS[r.game_dow]} ${String(r.game_time).slice(0,5)}`).join(", ")||"Kein Spieltag aktiv")}
+  </div></div>`;
+}
+function viewAdminPlayers(act){
+  if(openPlayer){const p=S.players.find(x=>x.id===openPlayer);if(p)return viewAdminPlayer(p);openPlayer=null;}
+  const q=pSearch.trim().toLowerCase();
+  const list=act.filter(p=>!q||p.name.toLowerCase().includes(q)||(p.rating_name||"").toLowerCase().includes(q)).sort((a,b)=>(a.unrated-b.unrated)||(b.rating-a.rating));
+  return `<div class="card wide">${back()}<div class="row"><h2>Spieler und Bewertungen</h2><span class="muted">${act.length} aktiv</span></div>
+    <p class="muted">Rank = (Tor + Verteidigung + Angriff) / 3. Nach jedem Spiel passt die App alle drei Werte gleichmäßig an. Tippe auf einen Spieler, um ihn zu bearbeiten oder ihm seinen Link zu senden.</p>
+    <label for="psearch">Suchen<input id="psearch" type="search" placeholder="Name" value="${esc(pSearch)}"></label>
+    <div class="plist"><div class="phead"><span>Spieler</span><span>Tor</span><span>Vert.</span><span>Angr.</span><span>Rank</span></div>
+    ${list.map(p=>`<button class="prow2" data-player="${p.id}"><span class="pn">${esc(p.name)}${p.unrated?' <span class="chip">neu</span>':""}${p.gk_only?' <span class="chip">TW</span>':""}${p.phone?"":' <span class="chip nophone">ohne Nr.</span>'}</span><span>${fmt(p.tor,1)}</span><span>${fmt(p.def,1)}</span><span>${fmt(p.att,1)}</span><span class="rk">${fmt(p.rating)}</span></button>`).join("")||'<p class="muted">Kein Spieler gefunden.</p>'}</div>${(()=>{const ina=S.players.filter(p=>p.status==="inaktiv");return ina.length?`<details><summary class="muted" style="cursor:pointer">${ina.length} deaktiviert</summary>${ina.map(p=>`<div class="row" style="padding:6px 0"><span>${esc(p.name)}</span><button class="btn small" data-reactivate="${p.id}">Wieder aktivieren</button></div>`).join("")}</details>`:"";})()}</div>`;
+}
+function viewAdminPlayer(p){
+  const sub=[p.rating_name?"in Bewertung: "+p.rating_name:"",p.note].filter(Boolean).join(" · ");
+  return `${linkBox||""}<div class="card wide"><button class="btn small" data-closeplayer="1">‹ Zurück zur Spielerliste</button>
+    <div class="row"><h2>${esc(p.name)}</h2>${p.role==="admin"?'<span class="chip">Admin</span>':""}</div>${sub?`<p class="muted">${esc(sub)}</p>`:""}
+    <div class="rankbox"><div><span class="muted">Rank</span><b>${fmt(p.rating)}</b></div><span class="muted">(Tor + Verteidigung + Angriff) / 3${p.last_delta!=null?` · letztes Spiel <span class="delta ${p.last_delta>=0?"up":"down"}">${p.last_delta>=0?"+":"−"}${fmt(Math.abs(p.last_delta))}</span>`:""}</span></div>
+    <div class="rgrid3">${[["tor","Tor"],["def","Verteidigung"],["att","Angriff"]].map(([c,l])=>`<label for="r${c}${p.id}">${l}<input id="r${c}${p.id}" data-cat="${c}" data-pid="${p.id}" type="number" step="0.01" min="1" max="10" value="${Math.round(p[c]*100)/100}"></label>`).join("")}</div>
+    <label for="ph${p.id}">Handynummer für WhatsApp<input id="ph${p.id}" data-phone="${p.id}" type="tel" inputmode="tel" placeholder="+49 176 …" value="${esc(p.phone)}"></label>
+    <label style="flex-direction:row;align-items:center;gap:8px" for="gk${p.id}"><input id="gk${p.id}" type="checkbox" data-gk="${p.id}" ${p.gk_only?"checked":""}> Steht nur im Tor (max. einer pro Team)</label>
+    <div class="btns"><button class="btn primary" data-link="${p.id}">Zugangslink senden</button>${p.role!=="admin"?`<button class="btn danger" data-deactivate="${p.id}">${confirmDeact===p.id?"Wirklich deaktivieren?":"Deaktivieren"}</button>`:""}</div></div>`;
+}
+let confirmDeact=null;
+function viewAdminPending(pend){
+  return `<div class="card wide">${back()}<h2>Freigaben</h2>${pend.length?pend.map(p=>`<div class="row" style="padding:8px 0;border-bottom:1px solid var(--line)"><span>${esc(p.name)}</span><span class="btns" style="flex:0 0 auto;align-items:center"><label for="st${p.id}" style="flex-direction:row;align-items:center;gap:6px">Startwert<input id="st${p.id}" type="number" step="0.1" value="${fmt(p.rating).replace(",",".")}" style="width:76px"></label><button class="btn small primary" data-approve="${p.id}">Freigeben</button><button class="btn small danger" data-reject="${p.id}">Ablehnen</button></span></div>`).join(""):'<p class="muted">Niemand wartet auf Freigabe.</p>'}<p class="muted">Der Startwert gilt zunächst für Tor, Verteidigung und Angriff. Danach kannst du die drei Werte in der Spielerliste einzeln anpassen.</p></div>`;
+}
+function viewAdminNew(){
   const reg=BASE+"?r="+(S.settings.invite_code||"");
-  h+=`<div class="card"><h2>Spieler hinzufügen</h2><div class="form"><label for="nn">Name<input id="nn" placeholder="z. B. Max M."></label><label for="ns">Startwert<input id="ns" type="number" step="0.1" value="6.5"></label><button class="btn full" data-act="addPlayer">Spieler anlegen und Link erzeugen</button></div>
-    <div class="sep" style="color:var(--muted)">Registrierungslink für Neue</div><div class="code">${esc(reg)}</div><div class="btns"><button class="btn small" data-copy="${esc(reg)}">Link kopieren</button><button class="btn small" data-act="newInvite">Neuen Link erzeugen</button></div></div>`;
-  const tpl=S.settings.template||"";
-  h+=`<div class="card"><h2>Nachrichtenvorlage</h2><p class="muted">Platzhalter: {datum}, {uhrzeit}, {teamaufteilung}, {link}</p><label for="tpl">Vorlage<textarea id="tpl" rows="7">${esc(tpl)}</textarea></label><div class="sep" style="color:var(--muted)">Vorschau</div><div class="code" id="tplprev" style="white-space:pre-wrap">${esc(shareText())}</div><div class="btns"><button class="btn primary" data-act="saveTpl">Vorlage speichern</button><button class="btn" data-act="copyShare">Text kopieren</button></div></div>`;
-  h+=`<div class="card"><h2>Spieltage und Automatik</h2><p class="muted">Der Server startet Abstimmung und Teamaufteilung zu diesen Zeiten, auch wenn niemand die App offen hat.</p>${S.rules.map(ruleHtml).join("")}<button class="btn" data-act="addRule">Weiteren Spieltag hinzufügen</button>${!S.matchday?'<button class="btn" data-act="startPoll">Abstimmung jetzt starten</button>':""}</div>`;
-  const act=S.players.filter(p=>p.status==="aktiv").sort((a,b)=>(a.unrated-b.unrated)||(b.rating-a.rating));
-  h+=`<div class="card wide"><h2>Spieler und Bewertungen</h2><p class="muted">Gesamt passt sich nach jedem Spiel automatisch an und ist die Grundlage der Teamaufteilung. Tor, Verteidigung und Angriff pflegst du selbst. Mit Handynummer öffnet „Link senden“ direkt den Chat des Spielers.</p><ul class="list">${act.map((p,ix)=>{const sub=[p.rating_name?"in Bewertung: "+p.rating_name:"",p.note].filter(Boolean).join(" · ");
-    return `<li class="prow"><div class="row"><span><span class="num">${p.unrated?"":(ix+1)+"."}</span><b>${esc(p.name)}</b>${p.role==="admin"?' <span class="chip">Admin</span>':""}${p.unrated?' <span class="chip">noch nicht bewertet</span>':""}${p.gk_only?' <span class="chip">Torwart</span>':""}</span>${p.last_delta!=null?`<span class="delta ${p.last_delta>=0?"up":"down"}">letztes Spiel ${p.last_delta>=0?"+":"−"}${fmt(Math.abs(p.last_delta))}</span>`:""}</div>${sub?`<div class="muted" style="font-size:13px">${esc(sub)}</div>`:""}
-    <div class="rgrid">${[["rating","Gesamt"],["tor","Tor"],["def","Verteidigung"],["att","Angriff"]].map(([c,l])=>`<label for="r${c}${p.id}">${l}<input id="r${c}${p.id}" data-cat="${c}" data-pid="${p.id}" type="number" step="0.01" min="1" max="10" value="${p[c]==null?"":Math.round(p[c]*100)/100}"></label>`).join("")}</div>
-    <div class="btns" style="align-items:flex-end"><label for="ph${p.id}" style="flex:2">Handy<input id="ph${p.id}" data-phone="${p.id}" type="tel" inputmode="tel" placeholder="+49 …" value="${esc(p.phone)}"></label><button class="btn small" data-link="${p.id}" style="flex:1">Link senden</button></div></li>`;}).join("")}</ul></div>`;
-  return h;
+  return `${linkBox||""}<div class="card wide">${back()}<h2>Spieler hinzufügen</h2><div class="form"><label for="nn">Name<input id="nn" placeholder="z. B. Max M."></label><label for="ns">Startwert<input id="ns" type="number" step="0.1" value="6.5"></label><button class="btn primary full" data-act="addPlayer">Spieler anlegen und Link erzeugen</button></div>
+    <div class="sep" style="color:var(--muted)">Registrierungslink für Neue</div><p class="muted">Diesen Link kannst du in die Gruppe posten. Neue tragen ihren Namen ein und erscheinen dann unter Freigaben.</p><div class="code">${esc(reg)}</div><div class="btns"><button class="btn small" data-copy="${esc(reg)}">Link kopieren</button><button class="btn small" data-act="newInvite">Neuen Link erzeugen</button></div></div>`;
+}
+function viewAdminTemplate(){
+  return `<div class="card wide">${back()}<h2>Nachrichtenvorlage</h2><p class="muted">Platzhalter: {datum}, {uhrzeit}, {teamaufteilung}, {link}</p><label for="tpl">Vorlage<textarea id="tpl" rows="7">${esc(S.settings.template||"")}</textarea></label><div class="sep" style="color:var(--muted)">Vorschau</div><div class="code" id="tplprev" style="white-space:pre-wrap">${esc(shareText())}</div><div class="btns"><button class="btn primary" data-act="saveTpl">Vorlage speichern</button><button class="btn" data-act="copyShare">Text kopieren</button></div></div>`;
+}
+function viewAdminRules(){
+  return `<div class="card wide">${back()}<h2>Spieltage und Automatik</h2><p class="muted">Der Server startet Abstimmung und Teamaufteilung zu diesen Zeiten, auch wenn niemand die App offen hat.</p>${S.rules.map(ruleHtml).join("")}<button class="btn" data-act="addRule">Weiteren Spieltag hinzufügen</button>${!S.matchday?'<button class="btn" data-act="startPoll">Abstimmung jetzt starten</button>':""}</div>`;
 }
 const daySel=(id,v,f,rid)=>`<select id="${id}" data-rule="${rid}" data-field="${f}">${DAYS.map((d,i)=>`<option value="${i}" ${i===v?"selected":""}>${d}</option>`).join("")}</select>`;
 const timeIn=(id,v,f,rid)=>`<input id="${id}" type="time" value="${String(v).slice(0,5)}" data-rule="${rid}" data-field="${f}">`;
@@ -406,7 +469,12 @@ async function sendLink(pid,res){
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button,[data-pick]");if(!t||t.disabled)return;
   const d=t.dataset;
-  if(d.tab){tab=d.tab;selected=null;confirmClose=false;render();window.scrollTo(0,0);return;}
+  if(d.tab){tab=d.tab;selected=null;confirmClose=false;if(d.tab==="admin"){adminSec=null;openPlayer=null;}linkBox=null;render();window.scrollTo(0,0);return;}
+  if(d.asec!==undefined){adminSec=d.asec||null;openPlayer=null;linkBox=null;render();window.scrollTo(0,0);return;}
+  if(d.player){openPlayer=+d.player;linkBox=null;confirmDeact=null;render();window.scrollTo(0,0);return;}
+  if(d.reactivate){await act("admin_update_player",{p_player:+d.reactivate,p_data:{status:"aktiv"}},"Wieder aktiv");return;}
+  if(d.closeplayer){openPlayer=null;linkBox=null;render();return;}
+  if(d.deactivate){const id=+d.deactivate;if(confirmDeact!==id){confirmDeact=id;render();return;}confirmDeact=null;openPlayer=null;await act("admin_update_player",{p_player:id,p_data:{status:"inaktiv"}},"Spieler deaktiviert");return;}
   if(d.vote){const st=await act("set_answer",{p_answer:d.vote});if(st)toast(d.vote==="dabei"?"Du bist dabei":d.vote==="nein"?"Abgesagt":"Gespeichert: noch unklar");return;}
   if(d.pick){const id=+d.pick;if(selected==null){selected=id;render();return;}if(selected===id){selected=null;render();return;}const a=selected;selected=null;await act("admin_swap",{p1:a,p2:id},"Getauscht");return;}
   if(d.pair){const [a,b]=d.pair.split(",").map(Number);live={a,b,ga:0,gb:0};render();return;}
@@ -434,10 +502,11 @@ document.addEventListener("click",async e=>{
   }
 });
 document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches("[data-pick]")){e.preventDefault();e.target.click();}});
-document.addEventListener("input",e=>{if(e.target.id==="tpl"){S.settings.template=e.target.value;const pv=$("#tplprev");if(pv)pv.textContent=shareText();}});
+document.addEventListener("input",e=>{if(e.target.id==="psearch"){pSearch=e.target.value;const pos=e.target.selectionStart;render();const el=$("#psearch");if(el){el.focus();try{el.setSelectionRange(pos,pos);}catch(_){}}return;}if(e.target.id==="tpl"){S.settings.template=e.target.value;const pv=$("#tplprev");if(pv)pv.textContent=shareText();}});
 document.addEventListener("change",async e=>{
   const el=e.target;
   if(el.dataset.cat){const v=parseFloat(el.value);if(isNaN(v))return;await act("admin_update_player",{p_player:+el.dataset.pid,p_data:{[el.dataset.cat]:v}},"Bewertung gespeichert");return;}
+  if(el.dataset.gk){await act("admin_update_player",{p_player:+el.dataset.gk,p_data:{gk_only:el.checked}},"Gespeichert");return;}
   if(el.dataset.phone){await act("admin_update_player",{p_player:+el.dataset.phone,p_data:{phone:el.value.trim()}},"Handynummer gespeichert");return;}
   if(el.dataset.rule){const r={...S.rules.find(x=>x.id===+el.dataset.rule)};const f=el.dataset.field;r[f]=f==="active"?el.checked:(f.endsWith("dow")?+el.value:el.value);await act("admin_save_rule",{p_rule:r},"Einstellung gespeichert");return;}
 });
