@@ -200,6 +200,14 @@ main{padding-bottom:110px}
 .rankbox b{font-family:var(--font-display);font-size:30px;color:var(--accent);line-height:1}
 .rgrid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .rgrid3 input{width:100%}
+
+.phead.ph4,.prow2.ph4{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,1.25fr) 48px}
+.prow2 .tel{font-size:12.5px!important;color:var(--muted);white-space:normal;line-height:1.3;text-align:left!important}
+.ph4 span:nth-child(2){text-align:left!important}
+.chip:empty{display:none}
+.phead.ph4 span:nth-child(3){text-align:left!important}
+.prow2.pick1{grid-template-columns:minmax(0,1fr) 24px}
+.claim{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,0.09);background:rgba(255,255,255,0.03);margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -222,7 +230,7 @@ const TEAMS=[["Rot","var(--t-rot)"],["Grün","var(--t-gruen)"],["Blau","var(--t-
 const ERR={NICHT_ANGEMELDET:"Bitte über deinen persönlichen Zugangslink anmelden.",KEIN_ADMIN:"Nur für Admins.",ZU_WENIGE:"Weniger als 10 Zusagen: keine zwei Teams möglich.",
   ABSTIMMUNG_GESCHLOSSEN:"Die Abstimmung ist geschlossen, das Spiel hat begonnen.",KEINE_ABSTIMMUNG:"Gerade läuft keine Abstimmung.",LINK_UNGUELTIG:"Dieser Link ist ungültig oder abgelaufen. Bitte den Admin um einen neuen Link.",
   SPIELE_VORHANDEN:"Es sind schon Spiele eingetragen, die Teams lassen sich nicht mehr ändern.",GLEICHES_TEAM:"Die beiden Spieler sind im selben Team.",KEINE_TEAMS:"Es stehen noch keine Teams.",
-  NAME_UNGUELTIG:"Bitte einen Namen mit 2 bis 40 Zeichen eingeben.",WARTET_AUF_FREIGABE:"Deine Registrierung wartet noch auf Freigabe.",ABSTIMMUNG_LAEUFT:"Es läuft bereits eine Abstimmung.",KEIN_SPIELTAG:"Bitte zuerst einen Spieltag anlegen.",WERT_UNGUELTIG:"Werte müssen zwischen 1 und 10 liegen."};
+  NAME_UNGUELTIG:"Bitte einen Namen mit 2 bis 40 Zeichen eingeben.",WARTET_AUF_FREIGABE:"Deine Registrierung wartet noch auf Freigabe.",ABSTIMMUNG_LAEUFT:"Es läuft bereits eine Abstimmung.",KEIN_SPIELTAG:"Bitte zuerst einen Spieltag anlegen.",WERT_UNGUELTIG:"Werte müssen zwischen 1 und 10 liegen.",TELEFON_UNGUELTIG:"Bitte eine gültige Telefonnummer eingeben.",BEREITS_VERGEBEN:"Dieser Spieler wurde gerade schon ausgewählt. Bitte melde dich beim Admin."};
 
 let token=null; try{token=localStorage.getItem("lk_token");}catch(e){}
 let S=null, tab="start", live=null, selected=null, linkBox=null, regCode=null, confirmClose=false, loading=false;
@@ -292,20 +300,38 @@ function gamesHtml(games,del){
 // ---------- Bildschirme ohne Anmeldung ----------
 function renderNoLogin(){
   $("#nav").innerHTML="";$("#who").textContent="";
-  $("#main").innerHTML=`<div class="card wide"><h2>Willkommen bei Lüti Kapzi</h2><p class="muted">Bitte öffne die App über deinen persönlichen Zugangslink, den du vom Admin per WhatsApp bekommen hast. Danach bleibst du auf diesem Handy angemeldet.</p><p class="muted">Neu dabei? Frag in der Gruppe nach dem Registrierungslink.</p></div>`;
+  $("#main").innerHTML=`<div class="card wide"><h2>Willkommen bei Lüti Kapzi</h2><p class="muted">Bitte öffne die App über deinen persönlichen Zugangslink, den du vom Admin per WhatsApp bekommen hast. Danach bleibst du auf diesem Handy angemeldet.</p><p class="muted">Noch nicht angemeldet? Nutze den Anmeldelink aus der WhatsApp Gruppe.</p></div>`;
 }
-function renderRegister(){
+let claimList=null, claimPick=undefined, claimSearch="";
+async function renderRegister(){
   $("#nav").innerHTML="";
-  $("#main").innerHTML=`<div class="card wide"><h2>Registrierung</h2><p class="muted">Gib deinen Namen so ein, wie ihn die anderen aus der WhatsApp Gruppe kennen. Ein Admin gibt dich danach frei.</p><div class="form"><label class="full" for="regname">Dein Name<input id="regname" autocomplete="name" maxlength="40"></label><button class="btn primary full" data-act="register">Registrieren</button></div></div>`;
+  if(claimList===null){
+    $("#main").innerHTML='<div class="card wide"><p class="muted">Lädt …</p></div>';
+    try{claimList=await rpc("claim_list",{p_code:regCode});}catch(e){$("#main").innerHTML=`<div class="card wide"><h2>Link ungültig</h2><p class="muted">${ERR.LINK_UNGUELTIG}</p></div>`;return;}
+  }
+  if(claimPick===undefined){
+    const q=claimSearch.trim().toLowerCase();
+    const list=claimList.filter(p=>!q||p.name.toLowerCase().includes(q)||(p.rating_name||"").toLowerCase().includes(q));
+    $("#main").innerHTML=`<div class="card wide"><h2>Wer bist du?</h2><p class="muted">Wähle dich aus der Liste der Spieler aus. So bleiben deine bisherigen Bewertungen erhalten. Danach gibst du Vorname, Nachname und Telefonnummer an, und der Admin gibt dich frei.</p>
+      <label for="csearch">Suchen<input id="csearch" type="search" placeholder="Name" value="${esc(claimSearch)}"></label>
+      <div class="plist">${list.map(p=>`<button class="prow2 pick1" data-claim="${p.id}"><span class="pn">${esc(p.name)}${p.rating_name&&p.rating_name!==p.name?` <span class="muted" style="font-size:12.5px">(${esc(p.rating_name)})</span>`:""}</span><span class="rk">›</span></button>`).join("")||'<p class="muted">Kein Name gefunden.</p>'}</div>
+      <button class="btn" data-claim="neu">Ich bin nicht in der Liste, ich bin neu</button></div>`;
+    return;
+  }
+  const sel=claimPick?claimList.find(p=>p.id===claimPick):null;
+  $("#main").innerHTML=`<div class="card wide"><button class="btn small" data-claimback="1">‹ Andere Auswahl</button><h2>${sel?`Du bist ${esc(sel.name)}`:"Neu anmelden"}</h2>
+    <p class="muted">Alle Felder sind Pflicht. Deine Telefonnummer sieht nur der Admin.</p>
+    <div class="form"><label for="cfirst">Vorname<input id="cfirst" autocomplete="given-name" maxlength="40" required></label><label for="clast">Nachname<input id="clast" autocomplete="family-name" maxlength="40" required></label>
+    <label class="full" for="cphone">Telefonnummer<input id="cphone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+49 176 …" required></label>
+    <button class="btn primary full" data-act="submitClaim">Anmelden</button></div></div>`;
 }
-
 // ---------- Hauptansicht ----------
 function render(){
   if(!S)return;
   $("#who").textContent=S.me.name+(isAdmin()?" · Admin":"");
   if(S.me.status==="wartet"){
     $("#nav").innerHTML="";
-    $("#main").innerHTML=`<div class="card wide"><h2>Danke, ${esc(S.me.name)}</h2><p class="muted">Deine Registrierung ist eingegangen. Sobald ein Admin dich freigibt, kannst du abstimmen und die Teams sehen. Öffne die App dann einfach noch einmal.</p></div>`;
+    $("#main").innerHTML=`<div class="card wide"><h2>Danke, ${esc(S.me.name)}</h2><p class="muted">Deine Anmeldung ist eingegangen. Sobald der Admin dich freigibt, kannst du abstimmen und die Teams sehen. Diese Seite aktualisiert sich von selbst.</p></div>`;
     return;
   }
   const tabs=[["start","Start"],["teams","Teams"],["abend","Spielabend"],["historie","Historie"]];
@@ -395,7 +421,7 @@ function viewHistory(){
 let adminSec=null, openPlayer=null, pSearch="";
 const back=()=>`<button class="btn small" data-asec="">‹ Zurück zu Admin</button>`;
 function viewAdmin(){
-  const pend=S.players.filter(p=>p.status==="wartet");
+  const pend=S.claims||[];
   const act=S.players.filter(p=>p.status==="aktiv");
   const unr=act.filter(p=>p.unrated).length;
   if(adminSec==="spieler")return viewAdminPlayers(act);
@@ -407,8 +433,8 @@ function viewAdmin(){
   const tile=(k,t,sub,hot)=>`<button class="tile ${hot?"hot":""}" data-asec="${k}"><b>${t}</b><span>${sub}</span><i aria-hidden="true">›</i></button>`;
   return `${linkBox||""}<div class="card wide"><h2>Admin</h2><div class="tiles">
     ${pend.length?tile("freigaben","Freigaben",`${pend.length} ${pend.length===1?"Spieler wartet":"Spieler warten"} auf Freigabe`,true):""}
-    ${tile("spieler","Spieler und Bewertungen",`${act.length} aktiv${unr?` · ${unr} noch nicht bewertet`:""}`)}
-    ${tile("neu","Spieler hinzufügen","Neuen Spieler anlegen oder Registrierungslink teilen")}
+    ${tile("spieler","Spieler und Bewertungen",`${act.filter(p=>p.verified).length} von ${act.length} verifiziert${unr?` · ${unr} ohne Bewertung`:""}`)}
+    ${tile("neu","Anmeldelink und neue Spieler","Link für die Gruppe, Spieler selbst anlegen")}
     ${tile("vorlage","Nachrichtenvorlage","Text für die WhatsApp Gruppe")}
     ${tile("spieltage","Spieltage und Automatik",S.rules.filter(r=>r.active).map(r=>`${DAYS[r.game_dow]} ${String(r.game_time).slice(0,5)}`).join(", ")||"Kein Spieltag aktiv")}
   </div></div>`;
@@ -416,12 +442,15 @@ function viewAdmin(){
 function viewAdminPlayers(act){
   if(openPlayer){const p=S.players.find(x=>x.id===openPlayer);if(p)return viewAdminPlayer(p);openPlayer=null;}
   const q=pSearch.trim().toLowerCase();
-  const list=act.filter(p=>!q||p.name.toLowerCase().includes(q)||(p.rating_name||"").toLowerCase().includes(q)).sort((a,b)=>(a.unrated-b.unrated)||(b.rating-a.rating));
-  return `<div class="card wide">${back()}<div class="row"><h2>Spieler und Bewertungen</h2><span class="muted">${act.length} aktiv</span></div>
-    <p class="muted">Rank = (Tor + Verteidigung + Angriff) / 3. Nach jedem Spiel passt die App alle drei Werte gleichmäßig an. Tippe auf einen Spieler, um ihn zu bearbeiten oder ihm seinen Link zu senden.</p>
-    <label for="psearch">Suchen<input id="psearch" type="search" placeholder="Name" value="${esc(pSearch)}"></label>
-    <div class="plist"><div class="phead"><span>Spieler</span><span>Tor</span><span>Vert.</span><span>Angr.</span><span>Rank</span></div>
-    ${list.map(p=>`<button class="prow2" data-player="${p.id}"><span class="pn">${esc(p.name)}${p.unrated?' <span class="chip">neu</span>':""}${p.gk_only?' <span class="chip">TW</span>':""}${p.phone?"":' <span class="chip nophone">ohne Nr.</span>'}</span><span>${fmt(p.tor,1)}</span><span>${fmt(p.def,1)}</span><span>${fmt(p.att,1)}</span><span class="rk">${fmt(p.rating)}</span></button>`).join("")||'<p class="muted">Kein Spieler gefunden.</p>'}</div>${(()=>{const ina=S.players.filter(p=>p.status==="inaktiv");return ina.length?`<details><summary class="muted" style="cursor:pointer">${ina.length} deaktiviert</summary>${ina.map(p=>`<div class="row" style="padding:6px 0"><span>${esc(p.name)}</span><button class="btn small" data-reactivate="${p.id}">Wieder aktivieren</button></div>`).join("")}</details>`:"";})()}</div>`;
+  const key=p=>(p.verified?"0":"1")+(p.last_name||p.name).toLowerCase()+" "+(p.first_name||"").toLowerCase();
+  const list=act.filter(p=>!q||[p.name,p.first_name,p.last_name,p.rating_name,p.phone].join(" ").toLowerCase().includes(q)).sort((a,b)=>key(a).localeCompare(key(b),"de"));
+  const ver=act.filter(p=>p.verified).length;
+  return `<div class="card wide">${back()}<div class="row"><h2>Spieler und Bewertungen</h2><span class="muted">${ver} von ${act.length} verifiziert</span></div>
+    <p class="muted">Tippe auf einen Spieler für Tor, Verteidigung, Angriff und seinen Zugangslink. Rank = (Tor + Verteidigung + Angriff) / 3.</p>
+    <label for="psearch">Suchen<input id="psearch" type="search" placeholder="Name oder Telefon" value="${esc(pSearch)}"></label>
+    <div class="plist"><div class="phead ph4"><span>Nachname</span><span>Vorname</span><span>Telefon</span><span>Rank</span></div>
+    ${list.map(p=>p.verified?`<button class="prow2 ph4" data-player="${p.id}"><span class="pn"><b>${esc(p.last_name)}</b></span><span class="pn">${esc(p.first_name)}${p.gk_only?' <span class="chip">TW</span>':""}</span><span class="tel">${esc(p.phone)||'<span class="chip nophone">fehlt</span>'}</span><span class="rk">${fmt(p.rating)}</span></button>`
+      :`<button class="prow2 ph4" data-player="${p.id}"><span class="pn" style="grid-column:span 2">${esc(p.name)} <span class="chip nophone">nicht verifiziert</span></span><span class="tel">${esc(p.phone)}</span><span class="rk">${fmt(p.rating)}</span></button>`).join("")||'<p class="muted">Kein Spieler gefunden.</p>'}</div>${(()=>{const ina=S.players.filter(p=>p.status==="inaktiv");return ina.length?`<details><summary class="muted" style="cursor:pointer">${ina.length} deaktiviert</summary>${ina.map(p=>`<div class="row" style="padding:6px 0"><span>${esc(p.name)}</span><button class="btn small" data-reactivate="${p.id}">Wieder aktivieren</button></div>`).join("")}</details>`:"";})()}</div>`;
 }
 function viewAdminPlayer(p){
   const sub=[p.rating_name?"in Bewertung: "+p.rating_name:"",p.note].filter(Boolean).join(" · ");
@@ -429,18 +458,23 @@ function viewAdminPlayer(p){
     <div class="row"><h2>${esc(p.name)}</h2>${p.role==="admin"?'<span class="chip">Admin</span>':""}</div>${sub?`<p class="muted">${esc(sub)}</p>`:""}
     <div class="rankbox"><div><span class="muted">Rank</span><b>${fmt(p.rating)}</b></div><span class="muted">(Tor + Verteidigung + Angriff) / 3${p.last_delta!=null?` · letztes Spiel <span class="delta ${p.last_delta>=0?"up":"down"}">${p.last_delta>=0?"+":"−"}${fmt(Math.abs(p.last_delta))}</span>`:""}</span></div>
     <div class="rgrid3">${[["tor","Tor"],["def","Verteidigung"],["att","Angriff"]].map(([c,l])=>`<label for="r${c}${p.id}">${l}<input id="r${c}${p.id}" data-cat="${c}" data-pid="${p.id}" type="number" step="0.01" min="1" max="10" value="${Math.round(p[c]*100)/100}"></label>`).join("")}</div>
+    <div class="form"><label for="fn${p.id}">Vorname<input id="fn${p.id}" data-fname="${p.id}" value="${esc(p.first_name)}"></label><label for="ln${p.id}">Nachname<input id="ln${p.id}" data-lname="${p.id}" value="${esc(p.last_name)}"></label></div>
     <label for="ph${p.id}">Handynummer für WhatsApp<input id="ph${p.id}" data-phone="${p.id}" type="tel" inputmode="tel" placeholder="+49 176 …" value="${esc(p.phone)}"></label>
     <label style="flex-direction:row;align-items:center;gap:8px" for="gk${p.id}"><input id="gk${p.id}" type="checkbox" data-gk="${p.id}" ${p.gk_only?"checked":""}> Steht nur im Tor (max. einer pro Team)</label>
     <div class="btns"><button class="btn primary" data-link="${p.id}">Zugangslink senden</button>${p.role!=="admin"?`<button class="btn danger" data-deactivate="${p.id}">${confirmDeact===p.id?"Wirklich deaktivieren?":"Deaktivieren"}</button>`:""}</div></div>`;
 }
 let confirmDeact=null;
 function viewAdminPending(pend){
-  return `<div class="card wide">${back()}<h2>Freigaben</h2>${pend.length?pend.map(p=>`<div class="row" style="padding:8px 0;border-bottom:1px solid var(--line)"><span>${esc(p.name)}</span><span class="btns" style="flex:0 0 auto;align-items:center"><label for="st${p.id}" style="flex-direction:row;align-items:center;gap:6px">Startwert<input id="st${p.id}" type="number" step="0.1" value="${fmt(p.rating).replace(",",".")}" style="width:76px"></label><button class="btn small primary" data-approve="${p.id}">Freigeben</button><button class="btn small danger" data-reject="${p.id}">Ablehnen</button></span></div>`).join(""):'<p class="muted">Niemand wartet auf Freigabe.</p>'}<p class="muted">Der Startwert gilt zunächst für Tor, Verteidigung und Angriff. Danach kannst du die drei Werte in der Spielerliste einzeln anpassen.</p></div>`;
+  return `<div class="card wide">${back()}<h2>Freigaben</h2>${pend.length?pend.map(c=>`<div class="claim">
+    <div class="muted" style="font-size:12.5px">${c.is_new?"Neu, nicht in der Liste":`Hat sich ausgewählt als: <b style="color:var(--ink)">${esc(c.player_name)}</b>${c.rating_name?` (${esc(c.rating_name)})`:""} · Rank ${fmt(c.rating)}`}</div>
+    <div><b style="font-size:17px">${esc(c.first_name)} ${esc(c.last_name)}</b><div class="muted">${esc(c.phone)}</div></div>
+    <div class="btns" style="align-items:flex-end">${c.is_new?`<label for="cr${c.id}" style="flex:1">Startwert<input id="cr${c.id}" type="number" step="0.1" min="1" max="10" value="${fmt(c.rating).replace(",",".")}"></label>`:""}<button class="btn primary" data-decide="${c.id},1">Freigeben</button><button class="btn danger" data-decide="${c.id},0">Ablehnen</button></div></div>`).join(""):'<p class="muted">Niemand wartet auf Freigabe.</p>'}
+    <p class="muted">Beim Freigeben übernimmt die App Vorname, Nachname und Telefon. Danach heißt der Spieler überall „Vorname Nachname“, seine Bewertung bleibt erhalten.</p></div>`;
 }
 function viewAdminNew(){
   const reg=BASE+"?r="+(S.settings.invite_code||"");
-  return `${linkBox||""}<div class="card wide">${back()}<h2>Spieler hinzufügen</h2><div class="form"><label for="nn">Name<input id="nn" placeholder="z. B. Max M."></label><label for="ns">Startwert<input id="ns" type="number" step="0.1" value="6.5"></label><button class="btn primary full" data-act="addPlayer">Spieler anlegen und Link erzeugen</button></div>
-    <div class="sep" style="color:var(--muted)">Registrierungslink für Neue</div><p class="muted">Diesen Link kannst du in die Gruppe posten. Neue tragen ihren Namen ein und erscheinen dann unter Freigaben.</p><div class="code">${esc(reg)}</div><div class="btns"><button class="btn small" data-copy="${esc(reg)}">Link kopieren</button><button class="btn small" data-act="newInvite">Neuen Link erzeugen</button></div></div>`;
+  return `${linkBox||""}<div class="card wide">${back()}<h2>Anmeldelink und neue Spieler</h2><p class="muted">Spieler selbst anlegen, zum Beispiel für jemanden ohne Smartphone. Er bekommt dann einen persönlichen Zugangslink.</p><div class="form"><label for="nn">Name<input id="nn" placeholder="z. B. Max M."></label><label for="ns">Startwert<input id="ns" type="number" step="0.1" value="6.5"></label><button class="btn primary full" data-act="addPlayer">Spieler anlegen und Link erzeugen</button></div>
+    <div class="sep" style="color:var(--muted)">Anmeldelink für alle</div><p class="muted">Poste diesen Link in die Gruppe. Jeder wählt sich aus der Spielerliste aus, gibt Vorname, Nachname und Telefon an und erscheint dann unter Freigaben. Wer nicht in der Liste steht, meldet sich als neu an.</p><div class="code">${esc(reg)}</div><div class="btns"><a class="btn" href="https://wa.me/?text=${encodeURIComponent("Hallo zusammen, bitte meldet euch einmal in unserer Lüti Kapzi App an: Namen aus der Liste auswählen, Vorname, Nachname und Telefon eintragen. Danach gebe ich euch frei. "+reg)}" target="_blank" rel="noopener">In WhatsApp teilen</a><button class="btn" data-copy="${esc(reg)}">Link kopieren</button></div><button class="btn small" data-act="newInvite">Neuen Link erzeugen (alter wird ungültig)</button></div>`;
 }
 function viewAdminTemplate(){
   return `<div class="card wide">${back()}<h2>Nachrichtenvorlage</h2><p class="muted">Platzhalter: {datum}, {uhrzeit}, {teamaufteilung}, {link}</p><label for="tpl">Vorlage<textarea id="tpl" rows="7">${esc(S.settings.template||"")}</textarea></label><div class="sep" style="color:var(--muted)">Vorschau</div><div class="code" id="tplprev" style="white-space:pre-wrap">${esc(shareText())}</div><div class="btns"><button class="btn primary" data-act="saveTpl">Vorlage speichern</button><button class="btn" data-act="copyShare">Text kopieren</button></div></div>`;
@@ -482,12 +516,18 @@ document.addEventListener("click",async e=>{
   if(d.undo){live[d.undo]=Math.max(0,live[d.undo]-1);render();return;}
   if(d.delgame){await act("admin_delete_game",{p_game:+d.delgame},"Spiel gelöscht, Bewertungen neu berechnet");return;}
   if(d.copy){copy(d.copy);return;}
+  if(d.claim){claimPick=d.claim==="neu"?null:+d.claim;renderRegister();window.scrollTo(0,0);return;}
+  if(d.claimback){claimPick=undefined;renderRegister();return;}
+  if(d.decide){const [id,ok]=d.decide.split(",");const inp=$("#cr"+id);const v=inp?parseFloat(inp.value):NaN;await act("admin_decide_claim",{p_claim:+id,p_ok:ok==="1",p_rating:isNaN(v)?null:v},ok==="1"?"Freigegeben":"Abgelehnt");return;}
   if(d.approve){const v=parseFloat($("#st"+d.approve).value);await act("admin_update_player",{p_player:+d.approve,p_data:{status:"aktiv",rating:isNaN(v)?6.5:v}},"Freigegeben");return;}
   if(d.reject){await act("admin_reject_player",{p_player:+d.reject},"Abgelehnt");return;}
   if(d.link){try{const res=await rpc("admin_create_link",{p_token:token,p_player:+d.link});sendLink(+d.link,res);}catch(err){handleErr(err);}return;}
   if(d.delrule){await act("admin_delete_rule",{p_rule:+d.delrule},"Spieltag entfernt");return;}
   switch(d.act){
-    case "register":{const n=$("#regname").value.trim();try{const res=await rpc("register",{p_code:regCode,p_name:n});setToken(res.token);history.replaceState(null,"",BASE);regCode=null;await load();}catch(err){handleErr(err);}return;}
+    case "submitClaim":{const f=$("#cfirst").value.trim(),l=$("#clast").value.trim(),ph=$("#cphone").value.trim();
+      if(f.length<2||l.length<2){toast(ERR.NAME_UNGUELTIG);return;}if(ph.replace(/[^0-9]/g,"").length<8){toast(ERR.TELEFON_UNGUELTIG);return;}
+      try{const res=await rpc("submit_claim",{p_code:regCode,p_player:claimPick||null,p_first:f,p_last:l,p_phone:ph});setToken(res.token);history.replaceState(null,"",BASE);regCode=null;await load();}
+      catch(err){if(err.code==="BEREITS_VERGEBEN"){claimList=null;claimPick=undefined;}handleErr(err);if(regCode)renderRegister();}return;}
     case "gen":await act("admin_generate_teams",{},"Teams Rot, Grün, Blau ausgeglichen verteilt");return;
     case "markShared":await act("admin_mark_shared",{},"Als geteilt markiert");return;
     case "copyShare":copy(shareText());return;
@@ -502,10 +542,12 @@ document.addEventListener("click",async e=>{
   }
 });
 document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches("[data-pick]")){e.preventDefault();e.target.click();}});
-document.addEventListener("input",e=>{if(e.target.id==="psearch"){pSearch=e.target.value;const pos=e.target.selectionStart;render();const el=$("#psearch");if(el){el.focus();try{el.setSelectionRange(pos,pos);}catch(_){}}return;}if(e.target.id==="tpl"){S.settings.template=e.target.value;const pv=$("#tplprev");if(pv)pv.textContent=shareText();}});
+document.addEventListener("input",e=>{if(e.target.id==="csearch"){claimSearch=e.target.value;const pos=e.target.selectionStart;renderRegister();const el=$("#csearch");if(el){el.focus();try{el.setSelectionRange(pos,pos);}catch(_){}}return;}if(e.target.id==="psearch"){pSearch=e.target.value;const pos=e.target.selectionStart;render();const el=$("#psearch");if(el){el.focus();try{el.setSelectionRange(pos,pos);}catch(_){}}return;}if(e.target.id==="tpl"){S.settings.template=e.target.value;const pv=$("#tplprev");if(pv)pv.textContent=shareText();}});
 document.addEventListener("change",async e=>{
   const el=e.target;
   if(el.dataset.cat){const v=parseFloat(el.value);if(isNaN(v))return;await act("admin_update_player",{p_player:+el.dataset.pid,p_data:{[el.dataset.cat]:v}},"Bewertung gespeichert");return;}
+  if(el.dataset.fname){await act("admin_update_player",{p_player:+el.dataset.fname,p_data:{first_name:el.value.trim()}},"Vorname gespeichert");return;}
+  if(el.dataset.lname){await act("admin_update_player",{p_player:+el.dataset.lname,p_data:{last_name:el.value.trim()}},"Nachname gespeichert");return;}
   if(el.dataset.gk){await act("admin_update_player",{p_player:+el.dataset.gk,p_data:{gk_only:el.checked}},"Gespeichert");return;}
   if(el.dataset.phone){await act("admin_update_player",{p_player:+el.dataset.phone,p_data:{phone:el.value.trim()}},"Handynummer gespeichert");return;}
   if(el.dataset.rule){const r={...S.rules.find(x=>x.id===+el.dataset.rule)};const f=el.dataset.field;r[f]=f==="active"?el.checked:(f.endsWith("dow")?+el.value:el.value);await act("admin_save_rule",{p_rule:r},"Einstellung gespeichert");return;}
@@ -516,11 +558,11 @@ document.addEventListener("change",async e=>{
   const q=new URLSearchParams(location.search);
   const z=q.get("z"),rc=q.get("r");
   if(z){try{const res=await rpc("redeem_link",{p_link:z});setToken(res.token);toast("Angemeldet");}catch(err){if(!token){$("#main").innerHTML=`<div class="card wide"><h2>Link ungültig</h2><p class="muted">${ERR.LINK_UNGUELTIG}</p></div>`;history.replaceState(null,"",BASE);return;}}history.replaceState(null,"",BASE);}
+  setInterval(()=>{const busyInput=document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);if(token&&document.visibilityState==="visible"&&!live&&!busyInput&&tab!=="admin")load(true);},20000);
+  document.addEventListener("visibilitychange",()=>{if(token&&document.visibilityState==="visible"&&!live)load(true);});
   if(rc&&!token){regCode=rc;renderRegister();return;}
   if(!token){renderNoLogin();return;}
   await load();
-  setInterval(()=>{const busyInput=document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);if(document.visibilityState==="visible"&&!live&&!busyInput&&tab!=="admin")load(true);},20000);
-  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&!live)load(true);});
 })();
 </script>
 </body>
