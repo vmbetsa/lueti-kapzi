@@ -269,6 +269,13 @@ nav{bottom:calc(12px + env(safe-area-inset-bottom));left:calc(12px + env(safe-ar
 .hright{flex-wrap:nowrap}
 .outbtn{padding:6px 9px}
 }
+.rule{gap:12px 10px}
+.rule select,.rule input:not([type=checkbox]){width:100%;min-width:0;height:44px;box-sizing:border-box;margin:0}
+.rule input[type=time]{-webkit-appearance:none;appearance:none;text-align:left;line-height:44px;padding-top:0;padding-bottom:0}
+.rule input[type=time]::-webkit-date-and-time-value{text-align:left}
+.rrow{display:flex;flex-direction:column;gap:4px}
+.rrow .rl{font-size:13px;color:var(--muted)}
+.rpair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 </style>
 </head>
 <body>
@@ -656,13 +663,14 @@ function viewAdminRules(){
     <p class="muted">${L("Der Server startet Abstimmung und Teamaufteilung zu diesen Zeiten, auch wenn niemand die App offen hat.")}</p>${S.rules.map(ruleHtml).join("")}<button class="btn" data-act="addRule">${L("Weiteren Spieltag hinzufügen")}</button>${!S.matchday?`<button class="btn" data-act="startPoll">${L("Abstimmung jetzt starten")}</button>`:""}</div>`;
 }
 const daySel=(id,v,f,rid)=>`<select id="${id}" data-rule="${rid}" data-field="${f}">${DAYS().map((d,i)=>`<option value="${i}" ${i===v?"selected":""}>${d}</option>`).join("")}</select>`;
-const timeIn=(id,v,f,rid)=>`<input id="${id}" type="time" value="${hhmm(v)}" data-rule="${rid}" data-field="${f}">`;
+const timeIn=(id,v,f,rid,al)=>`<input id="${id}" type="time" value="${hhmm(v)}" data-rule="${rid}" data-field="${f}"${al?` aria-label="${al}"`:""}>`;
+const rPair=(t,p,dId,dv,df,tId,tv,tf,rid)=>`<div class="rrow full"><label class="rl" for="${p+dId}">${t}</label><div class="rpair">${daySel(p+dId,dv,df,rid)}${timeIn(p+tId,tv,tf,rid,t+" "+L("um"))}</div></div>`;
 function ruleHtml(r){const p="r"+r.id;return `<div class="rule"><label class="full" for="${p}a" style="flex-direction:row;align-items:center;gap:8px"><input id="${p}a" type="checkbox" ${r.active?"checked":""} data-rule="${r.id}" data-field="active"> ${L("Aktiv")}</label>
   <label class="full" for="${p}gd">${L("Spieltag")}${daySel(p+"gd",r.game_dow,"game_dow",r.id)}</label>
   <label for="${p}gt">${L("Beginn")}${timeIn(p+"gt",r.game_time,"game_time",r.id)}</label><label for="${p}et">${L("Ende")}${timeIn(p+"et",r.end_time,"end_time",r.id)}</label>
-  <label for="${p}pd">${L("Abstimmung startet")}${daySel(p+"pd",r.poll_dow,"poll_dow",r.id)}</label><label for="${p}pt">${L("um")}${timeIn(p+"pt",r.poll_time,"poll_time",r.id)}</label>
-  <label for="${p}sd">${L("Teamaufteilung")}${daySel(p+"sd",r.split_dow,"split_dow",r.id)}</label><label for="${p}st">${L("um")}${timeIn(p+"st",r.split_time,"split_time",r.id)}</label>
-  <label for="${p}vd">${L("+1 Gast erlaubt ab")}${daySel(p+"vd",r.guest_dow,"guest_dow",r.id)}</label><label for="${p}vt">${L("um")}${timeIn(p+"vt",r.guest_time,"guest_time",r.id)}</label>
+  ${rPair(L("Abstimmung startet"),p,"pd",r.poll_dow,"poll_dow","pt",r.poll_time,"poll_time",r.id)}
+  ${rPair(L("Teamaufteilung"),p,"sd",r.split_dow,"split_dow","st",r.split_time,"split_time",r.id)}
+  ${rPair(L("+1 Gast erlaubt ab"),p,"vd",r.guest_dow,"guest_dow","vt",r.guest_time,"guest_time",r.id)}
   <label class="full" for="${p}vl">${L("wenn weniger Zusagen als")}<input id="${p}vl" type="number" min="5" max="40" step="1" value="${r.guest_limit}" data-rule="${r.id}" data-field="guest_limit"></label>
   ${S.rules.length>1?`<button class="btn small danger full" data-delrule="${r.id}">${L("Spieltag entfernen")}</button>`:""}</div>`;}
 
