@@ -287,6 +287,7 @@ input[type=date]{min-height:42px}
 .prow2 .pn{min-width:0;white-space:normal;overflow-wrap:anywhere}
 .prow2 .pn .chip{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;margin-top:2px}
 @media (max-width:480px){.prow2 .pn .chip{font-size:10.5px;padding:1px 6px}}
+input.unsaved{border-color:var(--accent)!important}
 </style>
 </head>
 <body>
@@ -840,8 +841,23 @@ document.addEventListener("input",e=>{
   if(e.target.id==="psearch"){pSearch=e.target.value;keepFocus("psearch",render);return;}
   if(e.target.id==="tpl"){if(tplLang==="uk")S.settings.template_uk=e.target.value;else S.settings.template=e.target.value;const pv=$("#tplprev");if(pv)pv.textContent=shareText(tplLang);}
 });
-document.addEventListener("change",async e=>{
+// Eingaben erst speichern, wenn das Feld verlassen wird (nicht bei jeder Ziffer)
+const pend=new Map();
+async function flushSave(el){const fn=pend.get(el);if(!fn)return;pend.delete(el);await fn();}
+function flushAll(){for(const el of [...pend.keys()])flushSave(el);}
+document.addEventListener("focusout",e=>{if(pend.has(e.target))setTimeout(()=>flushSave(e.target),0);});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&pend.has(e.target)&&e.target.tagName==="INPUT"){e.preventDefault();e.target.blur();}});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")flushAll();});
+window.addEventListener("pagehide",flushAll);
+document.addEventListener("change",e=>{
   const el=e.target;
+  const instant=el.type==="checkbox"||el.tagName==="SELECT";
+  if(instant){handleChange(el);return;}
+  pend.set(el,()=>handleChange(el));el.classList.add("unsaved");
+  const wait=()=>setTimeout(()=>{if(!pend.has(el))return;if(document.activeElement===el)wait();else flushSave(el);},1500);
+  wait();
+});
+async function handleChange(el){
   if(el.dataset.cat){const v=parseFloat(el.value);if(isNaN(v))return;await act("admin_update_player",{p_player:+el.dataset.pid,p_data:{[el.dataset.cat]:v}},"Bewertung gespeichert");return;}
   if(el.dataset.fname){await act("admin_update_player",{p_player:+el.dataset.fname,p_data:{first_name:el.value.trim()}},"Gespeichert");return;}
   if(el.dataset.lname){await act("admin_update_player",{p_player:+el.dataset.lname,p_data:{last_name:el.value.trim()}},"Gespeichert");return;}
@@ -851,8 +867,8 @@ document.addEventListener("change",async e=>{
   if(el.dataset.birth){await act("admin_update_player",{p_player:+el.dataset.birth,p_data:{birth_date:el.value}},"Gespeichert");return;}
   if(el.id==="mybirth"||el.id==="mybirth2"){if(el.value)await act("set_birth_date",{p_date:el.value},"Gespeichert");return;}
   if(el.dataset.phone){await act("admin_update_player",{p_player:+el.dataset.phone,p_data:{phone:el.value.trim()}},"Gespeichert");return;}
-  if(el.dataset.rule){const r={...S.rules.find(x=>x.id===+el.dataset.rule)};const f=el.dataset.field;r[f]=f==="active"?el.checked:(/dow|limit/.test(f)?+el.value:el.value);await act("admin_save_rule",{p_rule:r},"Gespeichert");return;}
-});
+  if(el.dataset.rule){const r={...S.rules.find(x=>x.id===+el.dataset.rule)};const f=el.dataset.field;if(f!=="active"&&el.value==="")return;r[f]=f==="active"?el.checked:(/dow|limit|max_teams/.test(f)?+el.value:el.value);await act("admin_save_rule",{p_rule:r},"Gespeichert");return;}
+}
 
 // ---------- Start ----------
 (async function boot(){
